@@ -1,0 +1,180 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import ChatInterface from '@/components/chat/ChatInterface';
+import GamePreview from '@/components/game/GamePreview';
+import { Gamepad, Code, Share2, ChevronLeft } from 'lucide-react';
+
+export default function WorkspacePage() {
+  const params = useParams();
+  const gameId = params.id;
+  
+  const [gameData, setGameData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [showCode, setShowCode] = useState(false);
+  
+  useEffect(() => {
+    async function fetchGameData() {
+      try {
+        const response = await fetch(`/api/games/${gameId}`);
+        
+        if (!response.ok) throw new Error('Failed to fetch game data');
+        
+        const data = await response.json();
+        setGameData(data);
+        
+        // Initialize chat with the original prompt
+        setMessages([
+          { 
+            role: 'user', 
+            content: data.prompt 
+          },
+          { 
+            role: 'assistant', 
+            content: `I've created a game based on your description: "${data.prompt}". You can see it in the preview panel. Feel free to ask for any changes or additions!` 
+          }
+        ]);
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching game data:', error);
+        setLoading(false);
+      }
+    }
+    
+    if (gameId) {
+      fetchGameData();
+    }
+  }, [gameId]);
+  
+  async function handleSendMessage(message) {
+    // Add user message to chat
+    setMessages(prev => [...prev, { role: 'user', content: message }]);
+    
+    // Show loading indicator
+    setMessages(prev => [...prev, { role: 'assistant', content: '...', loading: true }]);
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId,
+          message,
+          history: messages.map(msg => ({ role: msg.role, content: msg.content }))
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to get response');
+      
+      const data = await response.json();
+      
+      // Replace loading message with actual response
+      setMessages(prev => prev.slice(0, prev.length - 1).concat({ 
+        role: 'assistant', 
+        content: data.message 
+      }));
+      
+      // Update game data if there were changes
+      if (data.gameData) {
+        setGameData(data.gameData);
+      }
+    } catch (error) {
+      console.error('Error in chat:', error);
+      // Replace loading message with error
+      setMessages(prev => prev.slice(0, prev.length - 1).concat({ 
+        role: 'assistant', 
+        content: 'Sorry, there was an error processing your request. Please try again.' 
+      }));
+    }
+  }
+  
+  return (
+    <div className="flex flex-col h-screen bg-black text-white">
+      {/* Header */}
+      <div className="flex-none h-16 border-b border-zinc-800 flex items-center justify-between px-6">
+        <div className="flex items-center space-x-4">
+          <a href="/" className="flex items-center text-gray-400 hover:text-white">
+            <ChevronLeft size={20} className="mr-1" />
+            <span>Back</span>
+          </a>
+          <div className="h-6 border-l border-zinc-700"></div>
+          <div className="flex items-center">
+            <Gamepad className="text-indigo-400 mr-2" size={20} />
+            <h1 className="text-xl font-semibold">Game Workspace</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowCode(!showCode)}
+            className="btn flex items-center space-x-2 bg-zinc-800 hover:bg-zinc-700"
+          >
+            <Code size={16} />
+            <span>{showCode ? 'Hide Code' : 'Show Code'}</span>
+          </button>
+          <button
+            onClick={() => {/* Share functionality */}}
+            className="btn btn-primary flex items-center space-x-2"
+          >
+            <Share2 size={16} />
+            <span>Share Game</span>
+          </button>
+        </div>
+      </div>
+      
+      <div className="flex-grow flex overflow-hidden">
+        {/* Chat Interface - Left Panel */}
+        <div className="w-1/2 border-r border-zinc-800 flex flex-col">
+          <ChatInterface 
+            messages={messages} 
+            onSendMessage={handleSendMessage} 
+          />
+        </div>
+        
+        {/* Game Preview - Right Panel */}
+        <div className="w-1/2 flex flex-col bg-zinc-950">
+          {loading ? (
+            <div className="flex-grow flex items-center justify-center">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin mb-4">
+                  <Gamepad size={32} className="text-indigo-400" />
+                </div>
+                <div className="text-xl text-gray-400">Loading game...</div>
+              </div>
+            </div>
+          ) : !gameData ? (
+            <div className="flex-grow flex items-center justify-center">
+              <div className="text-xl text-gray-400">Game data not found</div>
+            </div>
+          ) : (
+            <>
+              <div className={`${showCode ? 'h-1/2' : 'flex-grow'} relative overflow-hidden card pulse-glow border-none rounded-none`}>
+                <div className="absolute top-4 right-4 z-10 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                  {gameData.gameType || 'Custom Game'}
+                </div>
+                <GamePreview 
+                  gameCode={gameData.gameCode} 
+                  gameType={gameData.gameType}
+                />
+              </div>
+              
+              {showCode && (
+                <div className="h-1/2 border-t border-zinc-800 overflow-auto">
+                  <div className="p-2 bg-zinc-900 border-b border-zinc-800 text-sm font-mono flex justify-between items-center">
+                    <span>Game Code</span>
+                    <button className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded">Copy</button>
+                  </div>
+                  <pre className="p-4 text-sm overflow-auto bg-zinc-900 h-full">
+                    <code className="text-gray-300">{gameData.gameCode}</code>
+                  </pre>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
