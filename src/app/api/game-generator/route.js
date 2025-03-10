@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { GameBuilder } from '../../lib/game-engine/game-builder';
 
 // Import all components
-import '@/lib/game-engine/components';
+import '../../lib/game-engine/components/';
 
 // Ensure the global games Map exists
 if (!global.games) {
