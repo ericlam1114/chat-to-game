@@ -1,5 +1,5 @@
 // src/__tests__/component-registry.test.js
-import { ComponentRegistry } from '../app/lib/game-engine/component-registry';
+const { ComponentRegistry } = require('../app/lib/game-engine/component-registry');
 
 describe('Component Registry', () => {
   test('registers and retrieves components', () => {

@@ -1,6 +1,6 @@
 // src/__tests__/game-builder.test.js
-import { GameBuilder } from '../app/lib/game-engine/game-builder';
-import '../app/lib/game-engine/components';
+const { GameBuilder } = require('../app/lib/game-engine/game-builder');
+require('../app/lib/game-engine/components');
 
 test('builds a basic game', () => {
   const builder = new GameBuilder();
