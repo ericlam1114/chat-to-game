@@ -7,6 +7,7 @@ import { characterManager } from '../../character-manager';
  * 
  * Implements a text command interface that allows players to enter
  * commands to control the game, including character swapping.
+ * Updated to support cycling through characters in a round-robin fashion.
  */
 const commandSystemComponent = {
   name: 'commandSystem',
@@ -31,7 +32,7 @@ commandContainer.style.zIndex = '1000';
 
 const commandInput = document.createElement('input');
 commandInput.type = 'text';
-commandInput.placeholder = 'Enter command (e.g., "swap plane" or "use car")';
+commandInput.placeholder = 'Enter command (e.g., "swap plane" or "next")';
 commandInput.style.flex = '1';
 commandInput.style.padding = '8px 12px';
 commandInput.style.border = '2px solid #333';
@@ -53,6 +54,48 @@ commandButton.style.cursor = 'pointer';
 commandContainer.appendChild(commandInput);
 commandContainer.appendChild(commandButton);
 document.body.appendChild(commandContainer);
+
+// Add next/previous character buttons
+const navContainer = document.createElement('div');
+navContainer.style.position = 'absolute';
+navContainer.style.bottom = '20px';
+navContainer.style.right = '20px';
+navContainer.style.display = 'flex';
+navContainer.style.zIndex = '1000';
+
+const prevButton = document.createElement('button');
+prevButton.textContent = '◀ Prev';
+prevButton.style.padding = '8px 16px';
+prevButton.style.border = '2px solid #333';
+prevButton.style.borderTopLeftRadius = '4px';
+prevButton.style.borderBottomLeftRadius = '4px';
+prevButton.style.backgroundColor = '#444';
+prevButton.style.color = 'white';
+prevButton.style.cursor = 'pointer';
+
+const nextButton = document.createElement('button');
+nextButton.textContent = 'Next ▶';
+nextButton.style.padding = '8px 16px';
+nextButton.style.border = '2px solid #333';
+nextButton.style.borderTopRightRadius = '4px';
+nextButton.style.borderBottomRightRadius = '4px';
+nextButton.style.backgroundColor = '#444';
+nextButton.style.color = 'white';
+nextButton.style.cursor = 'pointer';
+
+// Current character indicator
+const currentCharLabel = document.createElement('div');
+currentCharLabel.textContent = 'Current: Player';
+currentCharLabel.style.padding = '8px 16px';
+currentCharLabel.style.border = '2px solid #333';
+currentCharLabel.style.backgroundColor = '#333';
+currentCharLabel.style.color = 'white';
+currentCharLabel.style.fontFamily = 'monospace';
+
+navContainer.appendChild(prevButton);
+navContainer.appendChild(currentCharLabel);
+navContainer.appendChild(nextButton);
+document.body.appendChild(navContainer);
 
 // Command feedback UI
 const feedbackContainer = document.createElement('div');
@@ -82,6 +125,31 @@ function showFeedback(message, isError = false) {
   }, 3000);
 }
 
+// Update the current character label
+function updateCharacterLabel(type) {
+  let displayName = 'Unknown';
+  
+  switch(type) {
+    case 'player':
+      displayName = 'Player';
+      break;
+    case 'vehicle':
+    case 'car':
+      displayName = 'Vehicle';
+      break;
+    case 'airplane':
+      displayName = 'Airplane';
+      break;
+    case 'stylizedAirplane':
+    case 'stylizedPlane':
+    case 'cssPlane':
+      displayName = 'Stylized Plane';
+      break;
+  }
+  
+  currentCharLabel.textContent = \`Current: \${displayName}\`;
+}
+
 // Process command input
 function processCommand(input) {
   const command = input.trim().toLowerCase();
@@ -102,23 +170,43 @@ function processCommand(input) {
     if (target === 'player' || target === 'human' || target === 'character') {
       window.swapCharacter('player');
       showFeedback('✓ Swapped to player character');
+      updateCharacterLabel('player');
     }
     else if (target === 'car' || target === 'vehicle' || target === 'auto') {
       window.swapCharacter('vehicle');
       showFeedback('✓ Swapped to vehicle');
+      updateCharacterLabel('vehicle');
     }
     else if (target === 'plane' || target === 'airplane' || target === 'jet' || 
              target === 'aircraft' || target === 'fighter') {
       window.swapCharacter('airplane');
       showFeedback('✓ Swapped to airplane');
+      updateCharacterLabel('airplane');
+    }
+    else if (target === 'stylized' || target === 'css' || target === 'css3d' || 
+             target === 'stylizedplane' || target === 'stylizedairplane' || target === 'cuboid') {
+      window.swapCharacter('stylizedAirplane');
+      showFeedback('✓ Swapped to stylized CSS airplane');
+      updateCharacterLabel('stylizedAirplane');
     }
     else {
       showFeedback(\`Unknown character type: \${target}\`, true);
     }
   }
+  // Next/previous character commands
+  else if (action === 'next') {
+    const nextType = window.nextCharacter();
+    showFeedback(\`✓ Swapped to next character\`);
+    updateCharacterLabel(window.gameState.activeCharacterType);
+  }
+  else if (action === 'prev' || action === 'previous') {
+    const prevType = window.prevCharacter();
+    showFeedback(\`✓ Swapped to previous character\`);
+    updateCharacterLabel(window.gameState.activeCharacterType);
+  }
   // Help command
   else if (action === 'help') {
-    showFeedback('Available commands: swap [player/car/plane], help');
+    showFeedback('Commands: swap [player/car/plane/stylized], next, prev, help');
   }
   // Unknown command
   else {
@@ -142,9 +230,22 @@ commandInput.addEventListener('keypress', (e) => {
   }
 });
 
+// Set up next/prev button handlers
+nextButton.addEventListener('click', () => {
+  window.nextCharacter();
+  updateCharacterLabel(window.gameState.activeCharacterType);
+  showFeedback('✓ Swapped to next character');
+});
+
+prevButton.addEventListener('click', () => {
+  window.prevCharacter();
+  updateCharacterLabel(window.gameState.activeCharacterType);
+  showFeedback('✓ Swapped to previous character');
+});
+
 // Show initial help message
 setTimeout(() => {
-  showFeedback('Type "help" for available commands');
+  showFeedback('Press Tab to cycle through characters');
 }, 1000);
 
 // Add hotkeys help text
@@ -160,12 +261,14 @@ hotkeyHelp.style.borderRadius = '4px';
 hotkeyHelp.style.zIndex = '1000';
 hotkeyHelp.innerHTML = \`
   <div style="margin-bottom: 5px; text-decoration: underline;">Hotkeys:</div>
-  <div>1: Switch to Player</div>
-  <div>2: Switch to Car</div>
-  <div>3: Switch to Airplane</div>
+  <div>Tab: Cycle to Next Character</div>
+  <div>Shift+Tab: Cycle to Previous Character</div>
   <div>WASD/Arrows: Move</div>
 \`;
 document.body.appendChild(hotkeyHelp);
+
+// Initialize the character label
+updateCharacterLabel(window.gameState.activeCharacterType || 'player');
 `;
 
     // We don't need animation code for this component
