@@ -18,15 +18,31 @@ export class GameBuilder {
       return this;
     }
     
-    this.components.push({
-      name,
-      config,
-      generate: component.generate,
-      dependencies: component.dependencies || [],
-      conflicts: component.conflicts || [],
-      modifiesAnimation: !!component.modifiesAnimation,
-      priority: component.priority || 5 // Default priority (1-10)
-    });
+    // Check if we already have this component type
+    const existingIndex = this.components.findIndex(c => c.name === name);
+    if (existingIndex >= 0) {
+      // Replace the existing component with the new one
+      this.components[existingIndex] = {
+        name,
+        config,
+        generate: component.generate,
+        dependencies: component.dependencies || [],
+        conflicts: component.conflicts || [],
+        modifiesAnimation: !!component.modifiesAnimation,
+        priority: component.priority || 5
+      };
+    } else {
+      // Add as a new component
+      this.components.push({
+        name,
+        config,
+        generate: component.generate,
+        dependencies: component.dependencies || [],
+        conflicts: component.conflicts || [],
+        modifiesAnimation: !!component.modifiesAnimation,
+        priority: component.priority || 5
+      });
+    }
     
     // Update game state
     if (name === 'player' || name === 'vehicle') {

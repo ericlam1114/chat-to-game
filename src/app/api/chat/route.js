@@ -72,7 +72,19 @@ export async function POST(request) {
       
       responseMessage = `I've transformed your game into a ${command.template} game!`;
     }
-    
+    else if (command.type === 'replace') {
+      // Remove existing component of the same type if it exists
+      const existingComponentIndex = game.components.findIndex(c => c.name === command.component);
+      
+      if (existingComponentIndex >= 0) {
+        // Remove the existing component
+        game.components.splice(existingComponentIndex, 1);
+      }
+      
+      // Add the new component
+      builder.addComponent(command.component, command.config);
+      responseMessage = `I've replaced the ${command.component} in your game with ${command.config.type || 'a new one'}!`;
+    }
     // Generate new game code
     const gameCode = builder.build();
     const components = builder.getComponentList();
