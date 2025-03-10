@@ -1,41 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Gamepad, Target, PuzzleIcon, Globe, Share2, Download, Lock, Sparkles } from 'lucide-react';
+import { Gamepad, Target, PuzzleIcon, Globe, Share2, Download, Lock, Sparkles, Zap, Sword, Shield } from 'lucide-react';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('RPG Adventure');
   const [isTyping, setIsTyping] = useState(true);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const router = useRouter();
 
-  // Example prompts that showcase the app's capabilities
+  // Enhanced example prompts with more gaming-specific ideas
   const examplePrompts = [
     {
-      title: "Fantasy RPG",
-      prompt: "Create a medieval fantasy RPG with a magic system and dragon enemies",
+      title: "Epic Fantasy RPG",
+      prompt: "Create an open-world fantasy RPG with a complex magic system, dragon bosses, and character classes",
       icon: "🐉"
     },
     {
       title: "Space Shooter",
-      prompt: "Build a space shooter with asteroids and alien enemies",
+      prompt: "Build a roguelike space shooter with procedural weapons and alien enemies",
       icon: "🚀"
     },
     {
-      title: "Platformer",
-      prompt: "Design a colorful platformer with coin collection and enemy jumping",
+      title: "Neon Platformer",
+      prompt: "Design a cyberpunk platformer with wall-running, time manipulation, and neon aesthetics",
       icon: "🎮"
     },
     {
-      title: "Racing Game",
-      prompt: "Make a racing game with futuristic hovercars and neon city tracks",
-      icon: "🏎️"
+      title: "Battle Royale",
+      prompt: "Create a battle royale with a shrinking zone, tactical abilities, and vehicle combat",
+      icon: "🏆"
     }
   ];
 
-  // Typewriter effect
+  // Track mouse movement for cursor effects
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setCursorPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Enhanced typewriter effect
   useEffect(() => {
     const timeout = setTimeout(() => {
       setIsTyping(false);
@@ -68,24 +79,33 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated background elements */}
+      {/* Enhanced animated background elements */}
       <div className="bg-stars"></div>
+      <div className="cyber-grid"></div>
       <div className="gradient-orb orb-1"></div>
       <div className="gradient-orb orb-2"></div>
+      <div className="gradient-orb orb-3"></div>
+      <div className="gradient-orb orb-4"></div>
       
-      {/* Glowing logo */}
+      {/* Animated cursor trail div */}
+      <div className="cursor-follower" style={{ left: cursorPosition.x, top: cursorPosition.y }}></div>
+      
+      {/* Enhanced glowing logo */}
       <div className="pt-16 pb-8 flex justify-center">
         <div className="relative">
-          <div className="absolute -inset-10 rounded-full bg-indigo-500 opacity-20 blur-xl"></div>
+          <div className="absolute -inset-12 rounded-full bg-indigo-500 opacity-20 blur-xl"></div>
           <div className="relative bg-black/50 rounded-full p-6 border border-indigo-500/30 logo-glow">
             <Gamepad size={32} className="text-indigo-400" />
           </div>
         </div>
       </div>
 
-      {/* Main headline with typewriter effect */}
+      {/* Enhanced main headline with typewriter effect */}
       <div className="text-center mb-12 relative">
-        <h1 className={`text-6xl font-bold mb-2 text-white inline-block ${isTyping ? 'typewriter' : 'text-glow'}`}>
+        <h1 
+          className={`text-6xl font-bold mb-2 text-white inline-block ${isTyping ? 'typewriter' : 'text-glow'}`}
+          data-text="Idea to game in seconds."
+        >
           Idea to game in seconds.
         </h1>
         <p className="text-xl text-gray-400 mt-4 opacity-0 animate-[fadeIn_1s_ease-in_forwards_2s]">
@@ -94,7 +114,7 @@ export default function Home() {
         <div className="absolute -z-10 top-1/2 left-1/2 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
       </div>
 
-      {/* Input container */}
+      {/* Enhanced input container */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <div className="card bg-zinc-900/70 border-zinc-800 p-6 rounded-2xl glow-border transform transition-all hover:scale-[1.01]">
           <form onSubmit={handleSubmit}>
@@ -130,6 +150,7 @@ export default function Home() {
                       ? 'opacity-50 cursor-not-allowed' 
                       : ''
                     }`}
+                    data-content="Create"
                   >
                     {isLoading ? (
                       <div className="flex items-center">
@@ -153,10 +174,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Category buttons */}
+      {/* Enhanced category buttons */}
       <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto px-4 mb-12">
         <CategoryButton 
-          icon={<Gamepad size={20} />} 
+          icon={<Sword size={20} />} 
           name="RPG Adventure" 
           isSelected={selectedCategory === 'RPG Adventure'}
           onClick={() => setSelectedCategory('RPG Adventure')}
@@ -179,11 +200,23 @@ export default function Home() {
           isSelected={selectedCategory === 'Open World'}
           onClick={() => setSelectedCategory('Open World')}
         />
+        <CategoryButton 
+          icon={<Zap size={20} />} 
+          name="Action" 
+          isSelected={selectedCategory === 'Action'}
+          onClick={() => setSelectedCategory('Action')}
+        />
+        <CategoryButton 
+          icon={<Shield size={20} />} 
+          name="Survival" 
+          isSelected={selectedCategory === 'Survival'}
+          onClick={() => setSelectedCategory('Survival')}
+        />
       </div>
 
-      {/* Examples section */}
+      {/* Enhanced examples section */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-center mb-3 text-blue-100 text-glow">Try one of these examples</h2>
+        <h2 className="text-2xl font-bold text-center mb-3 text-blue-100 text-glow" data-text="Try one of these examples">Try one of these examples</h2>
         <p className="text-center text-blue-200 mb-8">Click on any example to use it as your starting point</p>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -209,7 +242,7 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Footer */}
+      {/* Enhanced footer */}
       <footer className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center text-blue-300/70">
         <p className="relative inline-block">
           <span className="relative z-10">Powered by Next.js, Three.js and AI</span>

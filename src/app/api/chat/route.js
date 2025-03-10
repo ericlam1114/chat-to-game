@@ -1,11 +1,11 @@
 // src/app/api/chat/route.js
 import { NextResponse } from 'next/server';
-import { GameBuilder } from '@/lib/game-engine/game-builder';
-import { parseGameCommand } from '@/lib/game-engine/command-parser';
-import { registry } from '@/lib/game-engine/component-registry';
+import { GameBuilder } from '../../lib/game-engine/game-builder';
+import { parseGameCommand } from '../../lib/game-engine/command-parser';
+import { registry } from '../../lib/game-engine/component-registry';
 
 // Import all components
-import '@/lib/game-engine/components';
+import '../../lib/game-engine/components';
 
 // Ensure the global games Map exists
 if (!global.games) {
