@@ -6,7 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 // A sandbox environment to safely execute the generated Three.js code
 function createSandbox(containerElement, onError) {
-  // Create a clean THREE instance that can be used by the generated code
+  // Create a clean sandbox with THREE already available
   const sandbox = {
     THREE: THREE,
     OrbitControls: OrbitControls,
@@ -56,6 +56,8 @@ function createSandbox(containerElement, onError) {
           this.renderer.setSize(containerElement.clientWidth, containerElement.clientHeight);
         }
       });
+      
+      return this.renderer; // Return renderer so it's available in the game code
     }
   };
   
@@ -65,6 +67,11 @@ function createSandbox(containerElement, onError) {
 // Function to safely execute the game code in the sandbox
 function executeGameCode(sandbox, gameCode, onError) {
   try {
+    // Remove any import statements from the game code
+    const cleanedCode = gameCode
+      .replace(/import\s+.*from\s+['"].*['"]\s*;?/g, '')
+      .replace(/import\s+{.*}\s+from\s+['"].*['"]\s*;?/g, '');
+    
     // Create a function from the game code string
     const gameFunction = new Function(
       'THREE', 
@@ -75,7 +82,12 @@ function executeGameCode(sandbox, gameCode, onError) {
       'onError',
       `
         try {
-          ${gameCode}
+          // Create variables to be accessible to game code
+          let scene; 
+          let camera;
+          let renderer;
+          
+          ${cleanedCode}
         } catch (err) {
           onError(err);
         }

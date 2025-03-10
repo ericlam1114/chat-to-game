@@ -1,20 +1,19 @@
+// src/app/api/game-generator/route.js
 import { NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
-import { createRpgTemplate } from '../../lib/game-templates/rpg';
-// Import other game templates as needed
+import { GameBuilder } from '../../lib/game-engine/game-builder';
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Import all components
+import '@/lib/game-engine/components';
 
-// In-memory game storage (for MVP purposes)
-// In a production app, you would use a database
-const games = new Map();
+// Ensure the global games Map exists
+if (!global.games) {
+  global.games = new Map();
+}
 
 export async function POST(request) {
   try {
-    const { prompt } = await request.json();
+    const body = await request.json();
+    const { prompt } = body;
     
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
@@ -23,24 +22,39 @@ export async function POST(request) {
       );
     }
     
-    // Process the prompt with AI to determine game parameters
-    const gameParams = await processPromptWithAI(prompt);
+    // Determine game type from prompt
+    const gameType = determineGameType(prompt);
     
-    // Generate game code based on the identified game type and parameters
-    const gameData = generateGameCode(gameParams);
+    // Create game based on template
+    const builder = new GameBuilder();
+    const templateComponents = loadTemplate(gameType);
     
-    // Store the game data
-    const gameId = generateUniqueId();
-    games.set(gameId, {
-      ...gameData,
-      prompt,
-      createdAt: new Date().toISOString()
+    templateComponents.forEach(component => {
+      builder.addComponent(component.name, component.config);
     });
     
-    return NextResponse.json({ 
+    // Generate game code
+    const gameCode = builder.build();
+    const components = builder.getComponentList();
+    
+    // Generate unique ID
+    const gameId = Math.random().toString(36).substring(2, 15);
+    
+    // Store game data
+    const gameData = {
       id: gameId,
-      gameType: gameData.gameType
-    });
+      prompt,
+      gameType: gameType.charAt(0).toUpperCase() + gameType.slice(1),
+      gameCode,
+      components,
+      createdAt: new Date().toISOString()
+    };
+    
+    global.games.set(gameId, gameData);
+    
+    console.log(`Created ${gameType} game with ID: ${gameId}`);
+    
+    return NextResponse.json({ id: gameId });
   } catch (error) {
     console.error('Error generating game:', error);
     return NextResponse.json(
@@ -50,132 +64,69 @@ export async function POST(request) {
   }
 }
 
-// Process the user prompt with AI to extract game parameters
-async function processPromptWithAI(prompt) {
-  const systemPrompt = `
-    You are a game design assistant that helps translate user descriptions into game parameters.
-    Extract key information from the user's game description to determine:
-    1. Game type (rpg, platformer, shooter, etc.)
-    2. Theme (medieval, space, modern, etc.)
-    3. Key features (airplanes, magic, weapons, etc.)
-    4. Visual elements (colors, environment features)
-    
-    Respond with a JSON object containing these parameters.
-  `;
+function determineGameType(prompt) {
+  const promptLower = prompt.toLowerCase();
   
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
-    
-    const result = JSON.parse(completion.choices[0].message.content);
-    console.log('AI processed game parameters:', result);
-    
-    return result;
-  } catch (error) {
-    console.error('Error processing prompt with AI:', error);
-    
-    // Fallback to basic parameters if AI processing fails
-    return {
-      gameType: 'rpg',
-      theme: 'medieval',
-      features: [],
-      environment: {
-        skyColor: '87CEEB',
-        groundColor: '7CFC00'
-      }
-    };
+  if (promptLower.includes('rpg') || 
+      promptLower.includes('adventure') || 
+      promptLower.includes('explore')) {
+    return 'rpg';
   }
+  
+  if (promptLower.includes('shoot') || 
+      promptLower.includes('fps') || 
+      promptLower.includes('space')) {
+    return 'shooter';
+  }
+  
+  if (promptLower.includes('race') || 
+      promptLower.includes('car') || 
+      promptLower.includes('driving')) {
+    return 'racing';
+  }
+  
+  // Default to RPG
+  return 'rpg';
 }
 
-// Generate Three.js game code based on parameters
-function generateGameCode(params) {
-  const gameType = params.gameType?.toLowerCase() || 'rpg';
-  
-  // Map special features from AI to template parameters
-  const specialFeatures = [];
-  
-  if (params.features) {
-    if (Array.isArray(params.features)) {
-      specialFeatures.push(...params.features);
-    } else if (typeof params.features === 'string') {
-      specialFeatures.push(params.features);
-    } else if (typeof params.features === 'object') {
-      // If features is an object, extract keys with true values
-      Object.entries(params.features).forEach(([key, value]) => {
-        if (value === true) specialFeatures.push(key);
-      });
+function loadTemplate(templateName) {
+    switch (templateName) {
+      case 'rpg':
+        return [
+          { name: 'base', config: { position: [0, 5, 10] } },
+          { name: 'lighting', config: {} },
+          { name: 'sky', config: { color: '0x87CEEB' } },
+          { name: 'ground', config: { size: 100, color: '0x7CFC00' } },
+          { name: 'trees', config: { count: 10 } },
+          { name: 'player', config: { speed: 0.1 } },
+          { name: 'npcs', config: { count: 5 } }
+        ];
+      
+      case 'shooter':
+        return [
+          { name: 'base', config: { position: [0, 0, 10] } },
+          { name: 'lighting', config: {} },
+          { name: 'sky', config: { color: '0x000020' } },
+          { name: 'player', config: { type: 'spaceship', speed: 0.2 } },
+          { name: 'enemies', config: { count: 10, type: 'basic' } }
+        ];
+        
+      case 'racing':
+        return [
+          { name: 'base', config: { position: [0, 5, 10] } },
+          { name: 'lighting', config: {} },
+          { name: 'sky', config: { color: '0x87CEEB' } },
+          { name: 'ground', config: { size: 200, color: '0x7CFC00' } },
+          { name: 'raceTrack', config: {} },
+          { name: 'vehicle', config: { type: 'car', maxSpeed: 0.3 } }
+        ];
+        
+      default:
+        return [
+          { name: 'base', config: {} },
+          { name: 'lighting', config: {} },
+          { name: 'ground', config: {} },
+          { name: 'player', config: {} }
+        ];
     }
   }
-  
-  // Prepare template parameters
-  const templateParams = {
-    title: params.title || 'Game',
-    theme: params.theme || 'medieval',
-    specialFeatures: specialFeatures,
-    
-    // Environment settings
-    skyColor: params.environment?.skyColor || '87CEEB',
-    groundColor: params.environment?.groundColor || '7CFC00',
-    hasTrees: params.environment?.trees !== false,
-    hasMountains: params.environment?.mountains === true,
-    hasWater: params.environment?.water !== false,
-    
-    // Other settings based on game type
-    moveSpeed: params.character?.speed || 0.1,
-    npcCount: params.npcs?.count || 5
-  };
-  
-  // Select and apply the appropriate template
-  let gameCode;
-  
-  switch (gameType) {
-    case 'rpg':
-      gameCode = createRpgTemplate(templateParams);
-      break;
-    // Add cases for other game types
-    default:
-      gameCode = createRpgTemplate(templateParams);
-  }
-  
-  return {
-    gameType,
-    gameCode,
-    parameters: templateParams
-  };
-}
-
-// Generate a unique ID for the game
-function generateUniqueId() {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
-}
-
-// API route for fetching a specific game
-export async function GET(request) {
-  const url = new URL(request.url);
-  const id = url.pathname.split('/').pop();
-  
-  if (!id) {
-    return NextResponse.json(
-      { error: 'Game ID is required' },
-      { status: 400 }
-    );
-  }
-  
-  const game = games.get(id);
-  
-  if (!game) {
-    return NextResponse.json(
-      { error: 'Game not found' },
-      { status: 404 }
-    );
-  }
-  
-  return NextResponse.json(game);
-}

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import ChatInterface from '@/components/chat/ChatInterface';
 import GamePreview from '@/components/game/GamePreview';
-import { Gamepad, Code, Share2, ChevronLeft } from 'lucide-react';
+import TemplateSelector from '@/components/game/TemplateSelector';
+import { Gamepad, Code, Share2, ChevronLeft, Settings, RefreshCcw } from 'lucide-react';
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -14,6 +15,7 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [showCode, setShowCode] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   
   useEffect(() => {
     async function fetchGameData() {
@@ -90,6 +92,67 @@ export default function WorkspacePage() {
       }));
     }
   }
+
+  const handleSelectTemplate = async (templateId) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/regenerate-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId,
+          template: templateId,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to regenerate game');
+      
+      const data = await response.json();
+      setGameData(data);
+      
+      // Add a message about the template change
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `I've updated the game to use the ${templateId.toUpperCase()} template. You can now customize it or request specific changes.` 
+      }]);
+      
+    } catch (error) {
+      console.error('Error regenerating game:', error);
+    } finally {
+      setLoading(false);
+      setShowTemplateSelector(false);
+    }
+  };
+
+  const handleUpdateAssets = async (assetSettings) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/update-game-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId,
+          assetSettings,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update game assets');
+      
+      const data = await response.json();
+      setGameData(data);
+      
+      // Add a message about the asset changes
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `I've updated the game assets as requested. Let me know if you'd like to make any more changes.` 
+      }]);
+      
+    } catch (error) {
+      console.error('Error updating game assets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className="flex flex-col h-screen bg-black text-white">
@@ -108,6 +171,13 @@ export default function WorkspacePage() {
         </div>
         <div className="flex items-center gap-4">
           <button
+            onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+            className="btn flex items-center space-x-2 bg-zinc-800 hover:bg-zinc-700"
+          >
+            <Settings size={16} />
+            <span>Template & Assets</span>
+          </button>
+          <button
             onClick={() => setShowCode(!showCode)}
             className="btn flex items-center space-x-2 bg-zinc-800 hover:bg-zinc-700"
           >
@@ -124,6 +194,16 @@ export default function WorkspacePage() {
         </div>
       </div>
       
+      {/* Template Selector Panel (conditionally rendered) */}
+      {showTemplateSelector && (
+        <div className="border-b border-zinc-800 overflow-auto max-h-96">
+          <TemplateSelector 
+            onSelectTemplate={handleSelectTemplate}
+            onUpdateAssets={handleUpdateAssets}
+          />
+        </div>
+      )}
+      
       <div className="flex-grow flex overflow-hidden">
         {/* Chat Interface - Left Panel */}
         <div className="w-1/2 border-r border-zinc-800 flex flex-col">
@@ -139,7 +219,7 @@ export default function WorkspacePage() {
             <div className="flex-grow flex items-center justify-center">
               <div className="flex flex-col items-center">
                 <div className="animate-spin mb-4">
-                  <Gamepad size={32} className="text-indigo-400" />
+                  <RefreshCcw size={32} className="text-indigo-400" />
                 </div>
                 <div className="text-xl text-gray-400">Loading game...</div>
               </div>
@@ -164,7 +244,14 @@ export default function WorkspacePage() {
                 <div className="h-1/2 border-t border-zinc-800 overflow-auto">
                   <div className="p-2 bg-zinc-900 border-b border-zinc-800 text-sm font-mono flex justify-between items-center">
                     <span>Game Code</span>
-                    <button className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded">Copy</button>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(gameData.gameCode);
+                      }}
+                      className="px-2 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded"
+                    >
+                      Copy
+                    </button>
                   </div>
                   <pre className="p-4 text-sm overflow-auto bg-zinc-900 h-full">
                     <code className="text-gray-300">{gameData.gameCode}</code>

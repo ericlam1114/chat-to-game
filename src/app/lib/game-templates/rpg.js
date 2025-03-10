@@ -37,8 +37,7 @@ export function createRpgTemplate(params = {}) {
     };
   
     return `
-    // Initialize the renderer
-    initRenderer();
+const renderer = initRenderer();
   
     // Game constants
     const WORLD_SIZE = ${gameParams.worldSize};
