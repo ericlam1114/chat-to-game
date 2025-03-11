@@ -30,6 +30,14 @@ export function parseGameCommand(message) {
       component: "airplane", // Changed from 'vehicle' to 'airplane'
       config: extractVehicleConfig(messageLower),
     };
+  } else if (
+    messageLower.match(/add (a |an |some )?(wizard|magician|magic)/)
+  ) {
+    command = {
+      type: "replace",
+      component: "wizard", // Changed from 'vehicle' to 'wizard'
+      config: extractVehicleConfig(messageLower),
+    };
   } else if (messageLower.match(/add (a |an |some )?(enemy|enemies)/)) {
     command = {
       type: "add",

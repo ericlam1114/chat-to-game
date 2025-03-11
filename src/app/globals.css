@@ -18,7 +18,7 @@ body {
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
   min-height: 100vh;
   overflow-x: hidden;
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(129, 140, 248, 0.8)" stroke-width="2"/><circle cx="11" cy="11" r="2" fill="rgba(129, 140, 248, 0.8)"/></svg>'), auto;
+  /* cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(129, 140, 248, 0.8)" stroke-width="2"/><circle cx="11" cy="11" r="2" fill="rgba(129, 140, 248, 0.8)"/></svg>'), auto; */
 }
 
 /* Enhanced animated background with parallax stars */

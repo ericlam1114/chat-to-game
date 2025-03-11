@@ -50,6 +50,50 @@ export default function WorkspacePage() {
       fetchGameData();
     }
   }, [gameId]);
+
+  useEffect(() => {
+    // Make sure this function is available immediately
+    window.updateGamePreview = (newGameCode) => {
+      console.log("Updating game preview with new code:", newGameCode.substring(0, 100) + "...");
+      setGameData(prev => ({
+        ...prev,
+        gameCode: newGameCode
+      }));
+    };
+    
+    // Add specific character swap handlers
+    window.handleCharacterSwap = (characterType) => {
+      console.log(`WorkspacePage: Handling character swap to ${characterType}`);
+      // Force a character swap in the preview
+      if (window.characterManager && window.characterManager.generateGameCode) {
+        const newCode = window.characterManager.generateGameCode(characterType, {});
+        window.updateGamePreview(newCode);
+      }
+    };
+    
+    // Add listener for hotkeys
+    const handleKeyDown = (e) => {
+      // Number keys 1-5 for character swapping
+      const keyNumber = parseInt(e.key);
+      if (!isNaN(keyNumber) && keyNumber >= 1 && keyNumber <= 5) {
+        console.log(`Key ${keyNumber} pressed for character swap`);
+        const characterTypes = ['player', 'vehicle', 'wizard', 'airplane', 'stylizedAirplane'];
+        if (characterTypes[keyNumber-1]) {
+          window.handleCharacterSwap(characterTypes[keyNumber-1]);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.updateGamePreview = null;
+      window.handleCharacterSwap = null;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+
   
   async function handleSendMessage(message) {
     // Add user message to chat

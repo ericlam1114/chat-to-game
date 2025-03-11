@@ -15,6 +15,7 @@ import './environment/trees';
 import './characters/player';
 import './characters/vehicle';
 import './characters/airplane';
+import './characters/wizard';
 
 // Import gameplay components
 import './gameplay/collectibles';
