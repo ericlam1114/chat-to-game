@@ -1,19 +1,14 @@
 // src/app/lib/game-engine/character-manager.js
 import { registry } from './component-registry';
+import { gameState } from './GameState';
 
 /**
  * Character Manager with Round-Robin Support and Preview Integration
  * 
- * Handles the swapping of main characters in the game.
- * Now includes functionality to cycle through available character types
- * and update the game preview.
+ * Handles the swapping of main characters in the game using a state-based approach.
  */
-
 export class CharacterManager {
   constructor() {
-    this.activeCharacter = null;
-    this.activeCharacterType = null;
-    
     // Character configuration mapping
     this.characterConfig = {
       'player': {
@@ -42,11 +37,9 @@ export class CharacterManager {
         defaultConfig: {},
         fallback: 'airplane'
       }
-      // Add any other character types here
     };
     
     // Define the available character types for round-robin swapping
-    // (Using Object.keys ensures we stay in sync with characterConfig)
     this.availableTypes = Object.keys(this.characterConfig);
     
     // Current index in the round-robin cycle
@@ -54,82 +47,16 @@ export class CharacterManager {
   }
   
   /**
-   * Removes the currently active character from the scene
+   * Get character configuration for a given type
    */
-  removeActiveCharacter() {
-    if (this.activeCharacter) {
-      // Remove from scene
-      if (window.scene) {
-        scene.remove(this.activeCharacter);
-      }
-      
-      // Clean up any associated lights or objects
-      if (this.activeCharacter.userData && this.activeCharacter.userData.lights) {
-        this.activeCharacter.userData.lights.forEach(light => {
-          if (light) scene.remove(light);
-        });
-      }
-      
-      // Clean up CSS3D object if this is a stylized airplane
-      if (this.activeCharacter.userData && this.activeCharacter.userData.css3dObject) {
-        if (window.css3dScene) {
-          css3dScene.remove(this.activeCharacter.userData.css3dObject);
-        }
-      }
-      
-      // Clean up any event listeners or ongoing animations
-      if (this.activeCharacter.userData && this.activeCharacter.userData.cleanup) {
-        this.activeCharacter.userData.cleanup();
-      }
-      
-      this.activeCharacter = null;
-      this.activeCharacterType = null;
-      
-      return true;
-    }
-    
-    return false;
-  }
-  
-  /**
-   * Get the current reference to the active character
-   */
-  getActiveCharacter() {
-    return this.activeCharacter;
-  }
-  
-  /**
-   * Get the type of the current active character
-   */
-  getActiveCharacterType() {
-    return this.activeCharacterType;
-  }
-  
-  /**
-   * Set the active character
-   */
-  setActiveCharacter(character, type) {
-    // Remove existing character first
-    this.removeActiveCharacter();
-    
-    // Set the new character
-    this.activeCharacter = character;
-    this.activeCharacterType = type;
-    
-    // Update the current type index
-    const typeIndex = this.availableTypes.indexOf(type);
-    if (typeIndex >= 0) {
-      this.currentTypeIndex = typeIndex;
-    }
-    
-    return character;
+  getCharacterConfig(type) {
+    return this.characterConfig[type] || null;
   }
   
   /**
    * Get the next character type in the cycle
    */
   getNextCharacterType() {
-    // Increment the index and wrap around if needed
     this.currentTypeIndex = (this.currentTypeIndex + 1) % this.availableTypes.length;
     return this.availableTypes[this.currentTypeIndex];
   }
@@ -138,16 +65,8 @@ export class CharacterManager {
    * Get the previous character type in the cycle
    */
   getPrevCharacterType() {
-    // Decrement the index and wrap around if needed
     this.currentTypeIndex = (this.currentTypeIndex - 1 + this.availableTypes.length) % this.availableTypes.length;
     return this.availableTypes[this.currentTypeIndex];
-  }
-  
-  /**
-   * Get character configuration for a given type
-   */
-  getCharacterConfig(type) {
-    return this.characterConfig[type] || null;
   }
   
   /**
@@ -268,17 +187,16 @@ export function initCharacterSwapping() {
   // Create global references for use in components
   window.gameState = window.gameState || {};
   
-  // Function to remove the current active character if it exists
-  window.removeActiveCharacter = function() {
-    return characterManager.removeActiveCharacter();
-  };
-  
   // Function to swap the current character with a new type
-  window.swapCharacter = function(newType, config = {}) {
+  // Function to swap the current character with a new type
+window.swapCharacter = function(newType, config = {}) {
     console.log(`Swapping character to: ${newType}`);
     
-    // Remove existing character
-    window.removeActiveCharacter();
+    // Reset all global character variables
+    window.character = null;
+    window.vehicle = null;
+    window.airplane = null;
+    window.wizardChar = null;
     
     // Get current camera position to maintain continuity
     const currentPosition = new THREE.Vector3();
@@ -299,47 +217,17 @@ export function initCharacterSwapping() {
     // Merge default config with provided config
     const mergedConfig = { ...charConfig.defaultConfig, ...config };
     
-    // Get the component
-    let component = registry.get(charConfig.componentId);
-    
-    // Try fallback if component not found
-    if (!component && charConfig.fallback) {
-      console.warn(`Component ${charConfig.componentId} not found, using fallback ${charConfig.fallback}`);
-      const fallbackConfig = characterManager.getCharacterConfig(charConfig.fallback);
-      if (fallbackConfig) {
-        component = registry.get(fallbackConfig.componentId);
-      }
-    }
-    
-    if (!component) {
-      console.error(`Component for character type ${newType} not found`);
-      return null;
-    }
-    
-    // Create new character
-    eval(component.generate(mergedConfig).code);
-    const newCharacter = window[charConfig.globalVar] || null;
-    
-    // Store the reference
-    if (newCharacter) {
-      characterManager.setActiveCharacter(newCharacter, newType);
-      window.gameState.activeCharacter = newCharacter;
-    }
-    
-    // Return to previous camera position if needed
-    if (config.preserveCameraPosition && window.camera) {
-      camera.position.copy(currentPosition);
-    }
-    
-    // Update the game preview by regenerating the game code and notifying the UI
+    // Update the game preview by regenerating the game code
     if (window.updateGamePreview) {
-      // Regenerate game code to include the new character
       const updatedGameCode = characterManager.generateGameCode(newType, mergedConfig);
       window.updateGamePreview(updatedGameCode);
     }
     
-    console.log(`Character swapped to ${newType}`);
-    return newCharacter;
+    // Trigger character swap event to completely refresh the renderer
+    window.dispatchEvent(new Event("characterSwapped"));
+    
+    console.log(`Character swap event dispatched for: ${newType}`);
+    return true;
   };
   
   // Function to cycle to the next character in the round-robin
@@ -381,6 +269,7 @@ export function initCharacterSwapping() {
   // Initialize with the first character type
   window.swapCharacter(characterManager.availableTypes[0]);
 }
+
 // Make character manager available globally
 window.characterManager = characterManager;
 export default characterManager;
